@@ -9,30 +9,93 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      todos: {
+      items: {
         Row: {
-          id: number
-          inserted_at: string
-          is_complete: boolean | null
-          task: string | null
-          user_id: string
-        }
+          id: number;
+          name: string;
+          desc: string | null;
+          quantity: number;
+          area: string;
+          container: string;
+          dateAdded: string;
+          lastUpdate: string;
+          images: {
+            images: string[];
+            descriptions: string[];
+            aiDescriptions: string[];
+          };
+          attributes: {
+            color: string | null;
+            type: string | null;
+            size: string | null;
+            material: string | null;
+            dimensions: string | null;
+            brand: string | null;
+            weight: string | null;
+            model: string | null;
+            sku: string | null;
+            pattern: string | null;
+            condition: string | null;
+          };
+        };
         Insert: {
-          id?: number
-          inserted_at?: string
-          is_complete?: boolean | null
-          task?: string | null
-          user_id: string
-        }
+          id?: number;
+          name: string;
+          desc?: string | null;
+          quantity: number;
+          area: string;
+          container: string;
+          dateAdded: string;
+          lastUpdate: string;
+          images?: {
+            images?: string[];
+            descriptions?: string[];
+            aiDescriptions?: string[];
+          };
+          attributes?: {
+            color?: string | null;
+            type?: string | null;
+            size?: string | null;
+            material?: string | null;
+            dimensions?: string | null;
+            brand?: string | null;
+            weight?: string | null;
+            model?: string | null;
+            sku?: string | null;
+            pattern?: string | null;
+            condition?: string | null;
+          };
+        };
         Update: {
-          id?: number
-          inserted_at?: string
-          is_complete?: boolean | null
-          task?: string | null
-          user_id?: string
-        }
-      }
-    }
+          id?: number;
+          name?: string;
+          desc?: string | null;
+          quantity?: number;
+          area?: string;
+          container?: string;
+          dateAdded?: string;
+          lastUpdate?: string;
+          images?: {
+            images?: string[];
+            descriptions?: string[];
+            aiDescriptions?: string[];
+          };
+          attributes?: {
+            color?: string | null;
+            type?: string | null;
+            size?: string | null;
+            material?: string | null;
+            dimensions?: string | null;
+            brand?: string | null;
+            weight?: string | null;
+            model?: string | null;
+            sku?: string | null;
+            pattern?: string | null;
+            condition?: string | null;
+          };
+        };
+      };
+    };
     Views: {
       [_ in never]: never
     }

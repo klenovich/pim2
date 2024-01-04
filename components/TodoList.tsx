@@ -1,151 +1,247 @@
-import { Database } from '@/lib/schema'
-import { Session, useSupabaseClient } from '@supabase/auth-helpers-react'
-import { useEffect, useState } from 'react'
+import { Database } from '@/lib/schema';
+import { Session, useSupabaseClient } from '@supabase/auth-helpers-react';
+import { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 
-type Todos = Database['public']['Tables']['todos']['Row']
+type Item = Database['public']['Tables']['items']['Row'];
 
-export default function TodoList({ session }: { session: Session }) {
-  const supabase = useSupabaseClient<Database>()
-  const [todos, setTodos] = useState<Todos[]>([])
-  const [newTaskText, setNewTaskText] = useState('')
-  const [errorText, setErrorText] = useState('')
+interface NewItemFields {
+  name: string;
+  desc: string;
+  quantity: number;
+  area: string;
+  container: string;
+  images: {
+    images: string[];
+    descriptions: string[];
+    aiDescriptions: string[];
+  };
+  attributes: {
+    color: string | null;
+    type: string | null;
+    size: string | null;
+    material: string | null;
+    dimensions: string | null;
+    brand: string | null;
+    weight: string | null;
+    model: string | null;
+    sku: string | null;
+    pattern: string | null;
+    condition: string | null;
+  };
+}
 
-  const user = session.user
+export default function ItemList({ session }: { session: Session }) {
+  const supabase = useSupabaseClient<Database>();
+  const [items, setItems] = useState<Item[]>([]);
+  const [newItem, setNewItem] = useState<NewItemFields>({
+    name: '',
+    desc: '',
+    quantity: 1, // Defaulting to 1 for simplicity
+    area: '',
+    container: '',
+    images: {
+      images: [],
+      descriptions: [],
+      aiDescriptions: [],
+    },
+    attributes: {
+      color: null,
+      type: null,
+      size: null,
+      material: null,
+      dimensions: null,
+      brand: null,
+      weight: null,
+      model: null,
+      sku: null,
+      pattern: null,
+      condition: null,
+    }
+  });
+  const [errorText, setErrorText] = useState('');
 
   useEffect(() => {
-    const fetchTodos = async () => {
-      const { data: todos, error } = await supabase
-        .from('todos')
+    const fetchItems = async () => {
+      const { data, error } = await supabase
+        .from('items')
         .select('*')
-        .order('id', { ascending: true })
-
-      if (error) console.log('error', error)
-      else setTodos(todos)
-    }
-
-    fetchTodos()
-  }, [supabase])
-
-  const addTodo = async (taskText: string) => {
-    let task = taskText.trim()
-    if (task.length) {
-      const { data: todo, error } = await supabase
-        .from('todos')
-        .insert({ task, user_id: user.id })
-        .select()
-        .single()
+        .order('id', { ascending: true });
 
       if (error) {
-        setErrorText(error.message)
+        console.error('error', error);
       } else {
-        setTodos([...todos, todo])
-        setNewTaskText('')
+        setItems(data || []);
       }
-    }
-  }
+    };
 
-  const deleteTodo = async (id: number) => {
-    try {
-      await supabase.from('todos').delete().eq('id', id).throwOnError()
-      setTodos(todos.filter((x) => x.id != id))
-    } catch (error) {
-      console.log('error', error)
+    fetchItems();
+  }, [supabase]);
+
+  const addItem = async (e: FormEvent) => {
+    e.preventDefault();
+    const { data, error } = await supabase
+      .from('items')
+      .insert([
+        {
+          ...newItem, 
+          dateAdded: new Date().toISOString(), 
+          lastUpdate: new Date().toISOString()
+        }
+      ])
+      .single();
+
+    if (error) {
+      setErrorText(error.message);
+    } else if (data) {
+      setItems([...items, data]);
+      // Reset newItem
+      setNewItem({
+        name: '',
+        desc: '',
+        quantity: 1,
+        area: '',
+        container: '',
+        images: {
+          images: [],
+          descriptions: [],
+          aiDescriptions: [],
+        },
+        attributes: {
+          color: null,
+          type: null,
+          size: null,
+          material: null,
+          dimensions: null,
+          brand: null,
+          weight: null,
+          model: null,
+          sku: null,
+          pattern: null,
+          condition: null,
+        }
+      });
+      setErrorText(''); // Clear any errors on success
     }
-  }
+  };
+
+  const handleInputChange = (name: string, value: string | number | string[]) => {
+    setNewItem((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAttributeChange = (name: string, value: string) => {
+    setNewItem((prev) => ({
+      ...prev,
+      attributes: {
+        ...prev.attributes,
+        [name]: value
+      }
+    }));
+  };
+
+  const deleteItem = async (id: number) => {
+    const { error } = await supabase.from('items').delete().eq('id', id);
+    if (error) {
+      console.error('error', error);
+    } else {
+      setItems(items.filter((item) => item.id !== id));
+    }
+  };
 
   return (
     <div className="w-full">
-      <h1 className="mb-12">Todo List.</h1>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          addTodo(newTaskText)
-        }}
-        className="flex gap-2 my-2"
-      >
+      <h1 className="mb-12">Items List</h1>
+      <form onSubmit={addItem} className="flex flex-col gap-4">
         <input
-          className="rounded w-full p-2"
-          type="text"
-          placeholder="make coffee"
-          value={newTaskText}
-          onChange={(e) => {
-            setErrorText('')
-            setNewTaskText(e.target.value)
-          }}
+          name="name"
+          value={newItem.name}
+          onChange={(e) => handleInputChange('name', e.target.value)}
+          placeholder="Item Name"
+          required
+          className="p-2 border rounded"
         />
-        <button className="btn-black" type="submit">
-          Add
-        </button>
+        <textarea
+          name="desc"
+          value={newItem.desc}
+          onChange={(e) => handleInputChange('desc', e.target.value)}
+          placeholder="Description"
+          className="p-2 border rounded"
+        />
+        <input
+          type="number"
+          name="quantity"
+          value={newItem.quantity}
+          onChange={(e) => handleInputChange('quantity', Number(e.target.value))}
+          placeholder="Quantity"
+          required
+          min="0"
+          className="p-2 border rounded"
+        />
+        <input
+          name="area"
+          value={newItem.area}
+          onChange={(e) => handleInputChange('area', e.target.value)}
+          placeholder="Area"
+          className="p-2 border rounded"
+        />
+        <input
+          name="container"
+          value={newItem.container}
+          onChange={(e) => handleInputChange('container', e.target.value)}
+          placeholder="Container"
+          className="p-2 border rounded"
+        />
+        {/* Repeat this structure for each image input needed */}
+        <input
+          type="url"
+          name="image"
+          // Placeholder for adding new image inputs
+          placeholder="Image URL"
+          className="p-2 border rounded"
+        />
+        {/* Repeat this structure for each image description input needed */}
+        <input
+          name="imageDescription"
+          // Placeholder for adding new image description inputs
+          placeholder="Image Description"
+          className="p-2 border rounded"
+        />
+        {/* Attributes here */}
+        <input
+          name="color"
+          value={newItem.attributes.color || ''}
+          onChange={(e) => handleAttributeChange('color', e.target.value)}
+          placeholder="Color"
+          className="p-2 border rounded"
+        />
+        {/* Continue with other attribute inputs, like type, size, etc. */}
+        {/* For example: */}
+        <input
+          name="type"
+          value={newItem.attributes.type || ''}
+          onChange={(e) => handleAttributeChange('type', e.target.value)}
+          placeholder="Type"
+          className="p-2 border rounded"
+        />
+        {/* ... repeated for all attributes ... */}
+        <button className="btn-black p-2 border rounded" type="submit">Add Item</button>
       </form>
-      {!!errorText && <Alert text={errorText} />}
+      {!!errorText && <div className="text-red-600 p-2 rounded">{errorText}</div>}
       <div className="bg-white shadow overflow-hidden rounded-md">
         <ul>
-          {todos.map((todo) => (
-            <Todo key={todo.id} todo={todo} onDelete={() => deleteTodo(todo.id)} />
+          {items.map((item) => (
+            <li key={item.id} className="p-4 border-b border-gray-200">
+              {/* Item details and delete button */}
+              <span>{item.name}</span>
+              <button 
+                onClick={() => deleteItem(item.id)} 
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Delete
+              </button>
+            </li>
           ))}
         </ul>
       </div>
     </div>
-  )
+  );
 }
-
-const Todo = ({ todo, onDelete }: { todo: Todos; onDelete: () => void }) => {
-  const supabase = useSupabaseClient<Database>()
-  const [isCompleted, setIsCompleted] = useState(todo.is_complete)
-
-  const toggle = async () => {
-    try {
-      const { data } = await supabase
-        .from('todos')
-        .update({ is_complete: !isCompleted })
-        .eq('id', todo.id)
-        .throwOnError()
-        .select()
-        .single()
-
-      if (data) setIsCompleted(data.is_complete)
-    } catch (error) {
-      console.log('error', error)
-    }
-  }
-
-  return (
-    <li className="w-full block cursor-pointer hover:bg-gray-200 focus:outline-none focus:bg-gray-200 transition duration-150 ease-in-out">
-      <div className="flex items-center px-4 py-4 sm:px-6">
-        <div className="min-w-0 flex-1 flex items-center">
-          <div className="text-sm leading-5 font-medium truncate">{todo.task}</div>
-        </div>
-        <div>
-          <input
-            className="cursor-pointer"
-            onChange={(e) => toggle()}
-            type="checkbox"
-            checked={isCompleted ? true : false}
-          />
-        </div>
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onDelete()
-          }}
-          className="w-4 h-4 ml-2 border-2 hover:border-black rounded"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="gray">
-            <path
-              fillRule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-      </div>
-    </li>
-  )
-}
-
-const Alert = ({ text }: { text: string }) => (
-  <div className="rounded-md bg-red-100 p-4 my-3">
-    <div className="text-sm leading-5 text-red-700">{text}</div>
-  </div>
-)
